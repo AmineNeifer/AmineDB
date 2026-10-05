@@ -1,9 +1,15 @@
-## ``Instore`` Service and Client 
+## ``AmineDB`` Service and Client 
 
-- ``Instore`` is a microservice which is responsible for managing an in-memory
-key-value store. The user of that service can add, retrieve, remove... key-value pairs via that service. 
+- ``AmineDB`` is a clone of instore repo, which is a microservice responsible for managing an in-memory
+key-value store. The user of that service can add, retrieve, remove... key-value pairs via that service.
 
-- ``Instore`` service and the consumer of that service are implemented in both ``Go`` language.
+- ``AmineDB`` clones instore to have it as a basis for creating a database from scratch. Just benefitting from an old project
+that already has the server-client structure working. As we go, many changes will happen Namely:
+    - remove mongoDB
+    - implement B-Tree and some variants
+    - ... The remaining to be discovered as I learn more about DataBases.
+
+- I am not sure if gRPC is good for our use case, during my development I will keep everything flexible, as the point is to learn rather than using the correct approach.
 
 ## Service Definition 
 
