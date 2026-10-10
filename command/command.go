@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"fake.com/instore/client"
+	"fake.com/instore/storepb"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -28,6 +30,15 @@ var dbSigns = []string{"db", "database", "data-base", "mongo", "mongod", "mongod
 // storeType = "db" means that we are going to use mongodb, otherwise csv
 var storeType = "csv"
 
+func newConnection() *grpc.ClientConn {
+	cc, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+	return cc
+}
+
 func main() {
 	// initializeing filePath to for later use
 	var _, b, _, _ = runtime.Caller(0)
@@ -35,6 +46,12 @@ func main() {
 	var basepath = filepath.Dir(b)
 	// filePath = /path/to/command/csvFiles/ the directory in which we find csv file to be used by client
 	var filePath = basepath + "/csvFiles/"
+	_ = filePath
+
+	cc := newConnection()
+	c := storepb.NewStoreServiceClient(cc)
+
+	defer cc.Close()
 
 	// First screen to be shown to the user
 	fmt.Println(bCmd + "Hello! I am excited to have you as a user :D Enjoy!")
@@ -49,7 +66,7 @@ func main() {
 
 	// infinite loop (command line)
 	for {
-		// Get input fromo User
+		// Get input from User
 		fmt.Print(bUsr)
 		reader := bufio.NewReader(os.Stdin)
 		cmdString, err := reader.ReadString('\n')
@@ -95,118 +112,29 @@ func main() {
 			continue
 		}
 
-		// Commands execution
 		switch cmdKeys[0] {
-			// choose to use database or csv mode
-			case "use":
-				if len(cmdKeys) != 2 {
-					fmt.Println(bCmd + "Usage: use [db|csv]")
-				} else if contains(strings.ToLower(cmdKeys[1]), dbSigns) {
-					if storeType == "db" {
-						fmt.Println(bCmd + "Already using MongoDB mode")
-						continue
-					} else {
-						storeType = "db"
-						client.UseDb()
-					}
-				} else {
-					if storeType == "csv" {
-						fmt.Println(bCmd + "Already using CSV mode")
-						continue
-					} else {
-						storeType = "csv"
-						client.UseCsv()
-					}
-				}
-			// add key-value pair
-			case "add":
-				if len(cmdKeys) != 3 {
-					fmt.Println(bCmd + "Usage: add <key> <value>")
-				} else if storeType == "db" {
-					client.AddDb(cmdKeys[1], cmdKeys[2])
-				} else {
-					client.AddCsv(cmdKeys[1], cmdKeys[2])
-				}
-			// add key-value pairs from csv
-			case "addcsv":
-				if storeType == "db" {
-					fmt.Println(bCmd + "Command still not implemented for MongoDB mode...")
-				} else if len(cmdKeys) != 2 {
-					fmt.Println(bCmd + "Usage: addcsv <csv_filename>")
-				} else {
-					// get path of csv file which should be found under client/csvFiles directory
-					filePath += cmdKeys[1]
-					_, err := os.Stat(filePath)
-					// printing error in case file doesn't exist
-					if os.IsNotExist(err) {
-						fmt.Printf(bCmd+"%v\n", err)
-						continue
-					}
-					client.AddCsvFromFile(filePath)
-				}
-			// get values by key
-			case "get":
-				if storeType == "db" {
-					client.GetvDb(cmdKeys[1])
-				} else if len(cmdKeys) != 2 {
-					fmt.Println(bCmd + "Usage: get <key>")
-				} else {
-					client.GetvCsv(cmdKeys[1])
-				}
-			// get all key-value pair
-			case "getall":
-				if storeType == "db" {
-					fmt.Println(bCmd + "Command still not implemented for MongoDB mode...")
-				} else if len(cmdKeys) != 1 {
-					fmt.Println(bCmd + "Usage: getall")
-				} else {
-					client.GetAllCsv()
-				}
-			// get keys by value
-			case "getk":
-				if storeType == "db" {
-					client.GetkDb(cmdKeys[1])
-				} else if len(cmdKeys) != 2 {
-					fmt.Println(bCmd + "Usage: getk <value>")
-				} else {
-					client.GetkCsv(cmdKeys[1])	
-				}
-			// remove key-value pair
-			case "remove":
-				if len(cmdKeys) < 2 {
-					println(bCmd + "Usage: remove <key> <value>")
-				} else if strings.ToLower(cmdKeys[1]) == "all" {
-					client.RemoveAllCsv()
-				} else if len(cmdKeys) != 3 {
-					println(bCmd + "Usage: remove <key> <value>")
-				} else if storeType == "db" {
-					client.RemoveDb(cmdKeys[1], cmdKeys[2])
-				} else {
-					client.RemoveCsv(cmdKeys[1], cmdKeys[2])
-				}
-			// remove key-value pairs by csv
-			case "removecsv":
-				if storeType == "db" {
-					fmt.Println(bCmd + "Command still not implemented for MongoDB mode...")
-					continue
-				} else if len(cmdKeys) != 2 {
-					fmt.Println(bCmd + "Usage: removecsv <csv_filename>")
-				} else {
-					// get path of csv file which should be found under client/csvFiles directory
-					filePath += cmdKeys[1]
-					_, err := os.Stat(filePath)
-					// printing error in case file doesn't exist
-					if os.IsNotExist(err) {
-						fmt.Printf(bCmd+"%v\n", err)
-						continue
-					}
-					client.RemoveCsvFromFile(filePath)
-				}
-			default:
-				fmt.Println(bCmd + "'" + string(cmdKeys[0]) + "' is not a command!")
-				fmt.Println(bCmd + "Please use one of the commands provided above!")
+		case "use":
+			if len(cmdKeys) != 2 {
+				fmt.Println(bCmd + "Usage: use [csv]")
+			} else if cmdKeys[1] == "csv" {
+				client.Use(c, "csv")
+			}
+		case "insert":
+			if len(cmdKeys) != 3 {
+				fmt.Println(bCmd + "Usage: insert <key> <value>")
+			} else {
+				client.Insert(c, cmdKeys[1], cmdKeys[2])
+			}
+		case "select":
+			if cmdKeys[1] == "*" {
+				client.Select(c, "*")
+			}
+		default:
+			fmt.Println(bCmd + "'" + string(cmdKeys[0]) + "' is not a command!")
+			fmt.Println(bCmd + "Please use one of the commands provided above!")
 		}
 		
+
 	}
 }
 

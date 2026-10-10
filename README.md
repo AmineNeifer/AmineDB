@@ -261,8 +261,11 @@ data:<id:"604bf6493d024033948a623f" key:"betty" value:"holberton" >
 ``data.csv`` is generated/located `server/csvFiles/`
 files that are to be used in ``addcsv`` should be located in ``command/csvFiles/``
 ### Generate Server and Client side code 
-Pre-generated stub file is included in the go project. If you need to generate the stub files please use the below
- command from the root directory(inside instore directory)
-``` 
-protoc storepb/store.proto --go_out=plugins=grpc:.
-``` 
+Pre-generated stub file is included in the Go project. To regenerate it, install the
+protoc plugins from the repository root:
+
+```sh
+make protoc-tools
+export PATH="$(go env GOPATH)/bin:$PATH"
+make protobuf
+```
